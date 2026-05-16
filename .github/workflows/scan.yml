@@ -27,6 +27,7 @@ env:
   REGISTRY_GHCR: ghcr.io
   REGISTRY_DOCKERHUB: docker.io
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME}}/hardened-wordpress
+  GHCR_IMAGE_NAME: ${{ github.repository_owner }}/hardened-wordpress
   WP_URL: ${{ github.event.inputs.scan_target || 'http://localhost:8080' }}
   IMAGE_TAG: ${{ github.event.inputs.image_tag || 'latest' }}
 
@@ -188,7 +189,7 @@ jobs:
 
     outputs:
       image_digest: ${{ steps.push_ghcr.outputs.digest }}
-      image_tag_ghcr: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+      image_tag_ghcr: ${{ env.REGISTRY_GHCR }}/${{ env.GHCR_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
     steps:
       - name: Checkout repository
