@@ -1,0 +1,59 @@
+DevSecOps WordPress Lab – Engineering Notes
+===========================================
+
+## Architecture Decisions
+
+### Why MySQL 8.0 instead of 5.7?
+MySQL 5.7 reached End-of-Life in October 2023. Using it would introduce known,
+unpatched CVEs. MySQL 8.0 includes caching_sha2_password authentication,
+better JSON support, and active security maintenance.
+
+### Why wordpress:6.5-php8.3-apache?
+- WordPress 6.5 is the latest stable branch with active security patches.
+- PHP 8.3 includes significant performance improvements and fixes for older
+  type-juggling vulnerabilities present in PHP 7.x/8.0.
+- Apache is chosen over nginx for familiarity; hardening steps apply to both.
+
+### Multi-stage Dockerfile
+The builder stage installs WP-CLI and removes unused themes/plugins before
+the runtime stage is assembled. This keeps the final image lean (no WP-CLI
+in production) and removes unnecessary attack surface.
+
+## Known Limitations / Trade-offs
+
+1. XML-RPC is fully disabled. Some legitimate plugins (Jetpack) use it.
+   In a real environment, evaluate per-use-case.
+
+2. DISALLOW_FILE_MODS prevents plugin/theme auto-updates from the admin panel.
+   Updates must go through the CI/CD pipeline – which is the preferred approach
+   in a DevSecOps context.
+
+3. The WPScan free tier is rate-limited. For CI use, obtain an API token from
+   https://wpscan.com and store it as WPSCAN_API_TOKEN in GitHub Secrets.
+
+## Secrets Management
+
+GitHub Secrets required:
+  WPSCAN_API_TOKEN      – WPScan API token (optional but recommended)
+  DOCKERHUB_USERNAME    – Docker Hub account username
+  DOCKERHUB_TOKEN       – Docker Hub access token (not password)
+  GITHUB_TOKEN          – Auto-provisioned by GitHub Actions
+
+## Hardening Checklist
+
+[x] Non-root user (www-data) runs the application
+[x] PHP expose_php = Off
+[x] PHP disable_functions (exec, shell_exec, system, etc.)
+[x] Apache ServerTokens Prod / ServerSignature Off
+[x] Security headers (X-Frame-Options, CSP, HSTS candidates)
+[x] File editing disabled (DISALLOW_FILE_EDIT)
+[x] XML-RPC disabled
+[x] User enumeration via REST API blocked
+[x] WP version removed from HTML meta
+[x] readme.html / license.txt removed from container
+[x] wp-config.php permissions set to 440
+[x] Randomised table prefix
+[x] Debug mode disabled
+[x] System packages updated at build time
+[x] Unnecessary packages removed (wget, netcat, telnet)
+[x] SUID/SGID bit stripped from unnecessary binaries

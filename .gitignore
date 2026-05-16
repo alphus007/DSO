@@ -1,0 +1,20 @@
+# Environment files – NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# WPScan output (committed by CI only)
+scans/*.json
+scans/*.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Docker
+docker/wp-data/

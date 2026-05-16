@@ -1,0 +1,24 @@
+# wp-config-placeholder.txt
+#
+# This file documents the environment variables used to configure WordPress.
+# Actual secrets must NEVER be hardcoded here – use GitHub Secrets or a
+# secrets manager (Vault, AWS SSM, etc.) at runtime.
+#
+# Required environment variables:
+#
+#   MYSQL_ROOT_PASSWORD   – Root password for MySQL (set in docker-compose or CI)
+#   MYSQL_DATABASE        – Database name (default: wordpress)
+#   MYSQL_USER            – Application DB user (default: wpuser)
+#   MYSQL_PASSWORD        – Application DB password
+#   WP_TABLE_PREFIX       – WordPress table prefix (randomise to reduce SQLi risk)
+#
+# WordPress salts (generate fresh ones at https://api.wordpress.org/secret-key/1.1/salt/)
+# Store as GitHub Actions secrets: WP_AUTH_KEY, WP_SECURE_AUTH_KEY, etc.
+#
+# Example .env file (DO NOT commit to git – add to .gitignore):
+#
+#   MYSQL_ROOT_PASSWORD=<random-32-char>
+#   MYSQL_DATABASE=wordpress
+#   MYSQL_USER=wpuser
+#   MYSQL_PASSWORD=<random-32-char>
+#   WP_TABLE_PREFIX=wp7k_
