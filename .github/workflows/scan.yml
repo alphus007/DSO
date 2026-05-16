@@ -129,7 +129,7 @@ jobs:
 
           wpscan \
             --url "$WP_URL" \
-            --enumerate u,vp,vt,ap,at,tt,cb,dbe \
+            --enumerate u,vp,vt,tt,cb,dbe \
             --force \
             --no-banner \
             --format json \
@@ -139,7 +139,7 @@ jobs:
           # Also produce a human-readable report
           wpscan \
             --url "$WP_URL" \
-            --enumerate u,vp,vt,ap,at,tt,cb,dbe \
+            --enumerate u,vp,vt,tt,cb,dbe \
             --force \
             --no-banner \
             --format cli-no-colour \
@@ -334,7 +334,7 @@ jobs:
 
           wpscan \
             --url "$WP_URL" \
-            --enumerate u,vp,vt,ap,at,tt,cb,dbe \
+            --enumerate u,vp,vt,tt,cb,dbe \
             --force \
             --no-banner \
             --format json \
@@ -343,7 +343,7 @@ jobs:
 
           wpscan \
             --url "$WP_URL" \
-            --enumerate u,vp,vt,ap,at,tt,cb,dbe \
+            --enumerate u,vp,vt,tt,cb,dbe \
             --force \
             --no-banner \
             --format cli-no-colour \
