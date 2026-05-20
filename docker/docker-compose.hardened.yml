@@ -1,12 +1,11 @@
-# Vulnerable baseline stack - deliberately old WP + MySQL 5.7
-# Used to demonstrate WPScan findings BEFORE remediation.
-# For the hardened build, use docker-compose.hardened.yml.
+# Hardened stack - runs the locally built image from Dockerfile.hardened.
+# Build first:    docker build -f Dockerfile.hardened -t wordpress-hardened:local .
+# Then:           docker compose -f docker/docker-compose.hardened.yml up -d
 
 services:
   db:
-    image: mysql:5.7
-    platform: linux/amd64
-    container_name: wp-db
+    image: mysql:8.0
+    container_name: wp-db-hardened
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
@@ -14,7 +13,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-wpuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wppass}
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data_h:/var/lib/mysql
     networks:
       - wp-net
     healthcheck:
@@ -24,28 +23,29 @@ services:
       retries: 5
 
   wordpress:
-    image: wordpress:5.0-php7.2-apache
-    container_name: wp-site
+    image: wordpress-hardened:local
+    container_name: wp-site-hardened
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8080:80"
+      - "8081:80"
     environment:
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: ${MYSQL_USER:-wpuser}
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wppass}
       WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
-      WORDPRESS_TABLE_PREFIX: wp_
+      # Non-default table prefix shrinks the SQLi attack surface
+      WORDPRESS_TABLE_PREFIX: wp_x7k_
     volumes:
-      - wp_data:/var/www/html
+      - wp_data_h:/var/www/html
     networks:
       - wp-net
 
 volumes:
-  db_data:
-  wp_data:
+  db_data_h:
+  wp_data_h:
 
 networks:
   wp-net:
