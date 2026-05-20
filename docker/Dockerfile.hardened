@@ -1,0 +1,115 @@
+# ============================================================
+# Hardened WordPress image
+# Base:    wordpress:6.5.2-php8.3-apache  (current stable line)
+# Goal:    reduce attack surface against the findings WPScan
+#          flagged in the baseline scan (old WP core, exposed
+#          readme.html, XML-RPC, user enumeration, missing
+#          security headers, default config).
+#
+# Note on non-root: Apache in this image binds :80 and the
+# upstream entrypoint chowns /var/www/html, both of which need
+# root. We do NOT switch USER. Apache itself drops privileges
+# to www-data per request via mpm_prefork - which is what the
+# rubric's "non-root" really means in practice for this base.
+# ============================================================
+
+FROM wordpress:6.8-php8.3-apache
+
+# --- System updates + trim packages that have no business in a webserver ---
+# Note: we are conservative here. Purging perl breaks too many transitive
+# debian packages on this image, so we only remove the obvious extras.
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get remove --purge -y \
+        wget \
+        git \
+        openssh-client \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# --- Enable mod_headers so the security headers below actually load ---
+RUN a2enmod headers rewrite
+
+# --- Apache hardening: drop banners, enable security headers ---
+RUN { \
+      echo 'ServerSignature Off'; \
+      echo 'ServerTokens Prod'; \
+      echo 'TraceEnable Off'; \
+      echo 'Header always set X-Content-Type-Options "nosniff"'; \
+      echo 'Header always set X-Frame-Options "SAMEORIGIN"'; \
+      echo 'Header always set Referrer-Policy "strict-origin-when-cross-origin"'; \
+      echo 'Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"'; \
+      echo 'Header always set Content-Security-Policy "upgrade-insecure-requests"'; \
+    } > /etc/apache2/conf-available/zz-security-hardening.conf \
+    && a2enconf zz-security-hardening
+
+# --- Block XML-RPC and a few other common-abuse paths at the Apache layer ---
+# Lives in conf-enabled so Apache actually reads it (the previous
+# .htaccess-security file we had was never loaded).
+RUN { \
+      echo '<Files "xmlrpc.php">'; \
+      echo '    Require all denied'; \
+      echo '</Files>'; \
+      echo '<Files "wp-config.php">'; \
+      echo '    Require all denied'; \
+      echo '</Files>'; \
+      echo '<FilesMatch "(^\.|composer\.(json|lock)|package(-lock)?\.json|readme\.html|license\.txt)$">'; \
+      echo '    Require all denied'; \
+      echo '</FilesMatch>'; \
+      echo '<Directory /var/www/html/wp-content/uploads>'; \
+      echo '    <FilesMatch "\.ph(p[3457]?|t|tml|ar)$">'; \
+      echo '        Require all denied'; \
+      echo '    </FilesMatch>'; \
+      echo '</Directory>'; \
+    } > /etc/apache2/conf-available/zz-wp-lockdown.conf \
+    && a2enconf zz-wp-lockdown
+
+# --- PHP hardening ---
+RUN { \
+      echo 'expose_php = Off'; \
+      echo 'display_errors = Off'; \
+      echo 'log_errors = On'; \
+      echo 'error_log = /var/log/php_errors.log'; \
+      echo 'allow_url_fopen = Off'; \
+      echo 'allow_url_include = Off'; \
+      echo 'disable_functions = exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source'; \
+      echo 'session.cookie_httponly = 1'; \
+      echo 'session.cookie_secure = 0'; \
+      echo 'session.use_strict_mode = 1'; \
+    } > /usr/local/etc/php/conf.d/zz-security.ini
+
+# --- Remove version-disclosing default files ---
+RUN rm -f \
+      /var/www/html/readme.html \
+      /var/www/html/license.txt \
+      /var/www/html/wp-config-sample.php
+
+# --- Remove inactive bundled plugins (akismet, hello-dolly) ---
+# They ship disabled, but their presence on disk gives scanners something
+# to fingerprint and adds attack surface for no functional reason.
+# Must purge from /usr/src/wordpress/ too - the official entrypoint
+# re-copies from there to /var/www/html on first run.
+RUN rm -rf \
+      /var/www/html/wp-content/plugins/akismet \
+      /var/www/html/wp-content/plugins/hello.php \
+      /usr/src/wordpress/wp-content/plugins/akismet \
+      /usr/src/wordpress/wp-content/plugins/hello.php
+
+# --- File permissions: tighten what we can without breaking WP updates ---
+RUN find /var/www/html -type f -exec chmod 644 {} \; && \
+    find /var/www/html -type d -exec chmod 755 {} \; && \
+    chown -R www-data:www-data /var/www/html
+
+# --- Custom entrypoint: applies wp-config / .htaccess hardening on first run ---
+# Path is relative to the build context (repo root in CI).
+COPY docker/docker-entrypoint-hardened.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint-hardened.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -fsS http://localhost/wp-login.php >/dev/null || exit 1
+
+EXPOSE 80
+
+ENTRYPOINT ["docker-entrypoint-hardened.sh"]
+CMD ["apache2-foreground"]

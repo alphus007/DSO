@@ -12,11 +12,11 @@ A two-stage pipeline:
 ```
 .
 ├── README.md
-├── Dockerfile.hardened
-├── docker-entrypoint-hardened.sh
 ├── DevSecOps_WP_Lab_Report.pdf     ← the writeup (generated from real scans)
 ├── build_report.py                  ← regenerates the PDF from scans/*.json
 ├── docker/
+│   ├── Dockerfile.hardened          ← hardened image
+│   ├── docker-entrypoint-hardened.sh
 │   ├── docker-compose.yml           ← vulnerable baseline stack (port 8080)
 │   ├── docker-compose.hardened.yml  ← hardened stack from local image (port 8081)
 │   └── wp-config-placeholder.txt
@@ -43,7 +43,7 @@ docker run --rm --network host wpscanteam/wpscan \
 ### Hardened
 
 ```bash
-docker build -f Dockerfile.hardened -t wordpress-hardened:local .
+docker build -f docker/Dockerfile.hardened -t wordpress-hardened:local .
 docker compose -f docker/docker-compose.hardened.yml up -d
 # open http://localhost:8081/ and finish the install wizard
 docker run --rm --network host wpscanteam/wpscan \
@@ -93,5 +93,5 @@ See `DevSecOps_WP_Lab_Report.pdf` for the full before/after. Short version:
 
 | Registry | Image |
 |----------|-------|
-| GHCR     | `ghcr.io/<owner>/wordpress-hardened:hardened-latest` |
-| Docker Hub | `<user>/wordpress-hardened:hardened-latest` |
+| GHCR     | `ghcr.io/alphus007/hardened-wordpress:hardened-latest` |
+| Docker Hub | `alphus002/hardened-wordpress:hardened-latest` |
