@@ -102,8 +102,10 @@ RUN find /var/www/html -type f -exec chmod 644 {} \; && \
     chown -R www-data:www-data /var/www/html
 
 # --- Custom entrypoint: applies wp-config / .htaccess hardening on first run ---
-# Path is relative to the build context (repo root in CI).
-COPY docker/docker-entrypoint-hardened.sh /usr/local/bin/
+# Path is relative to the build context, which must be ./docker
+# (set via `context: ./docker` in the GitHub Actions workflow,
+#  or `docker build -f docker/Dockerfile.hardened docker/` locally).
+COPY docker-entrypoint-hardened.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint-hardened.sh
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
